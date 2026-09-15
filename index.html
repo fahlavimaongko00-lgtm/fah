@@ -715,7 +715,7 @@
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+import { getAuth, signInWithPopup, signInWithRedirect, getRedirectResult, GoogleAuthProvider, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
 // TODO: Replace with your actual Firebase config
@@ -1224,6 +1224,7 @@ try {
 
   /* Auth Flow */
   if (auth) {
+    getRedirectResult(auth).catch(err => console.error("Redirect auth error:", err));
     onAuthStateChanged(auth, async (user) => {
       if (user) {
         currentUser = user;
@@ -1251,10 +1252,15 @@ try {
       return;
     }
     const provider = new GoogleAuthProvider();
-    signInWithPopup(auth, provider).catch(err => {
-      console.error(err);
-      alert("Login failed: " + err.message);
-    });
+    const isMobileInApp = /FBAN|FBAV|Instagram|Line|WhatsApp|MicroMessenger/i.test(navigator.userAgent);
+    if (isMobileInApp) {
+      signInWithRedirect(auth, provider).catch(err => alert("Login failed: " + err.message));
+    } else {
+      signInWithPopup(auth, provider).catch(err => {
+        console.error("Popup login error:", err);
+        signInWithRedirect(auth, provider).catch(rErr => alert("Login failed: " + rErr.message));
+      });
+    }
   });
 
   $("signOutBtn").addEventListener("click", () => {
